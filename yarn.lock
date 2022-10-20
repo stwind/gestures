@@ -405,6 +405,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@preact/signals-core@npm:^1.2.2":
+  version: 1.2.2
+  resolution: "@preact/signals-core@npm:1.2.2"
+  checksum: 29013cc0eda2d5963ae682e5faebd20ba6b6207edadc2f8f21f63c8a6645831e7b55e08b225e2296a5bde26c6c5cd02d550bf9bb82efe9cefe01bfb2bc096ee3
+  languageName: node
+  linkType: hard
+
+"@preact/signals@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@preact/signals@npm:1.1.2"
+  dependencies:
+    "@preact/signals-core": ^1.2.2
+  peerDependencies:
+    preact: 10.x
+  checksum: 71c947f14b3a9ab488166740353acc44e5312222dd6b58b03f3218d9744ccda2992aff51bf356920cc7b33cc45bb3642ce471fa168b568a5a98a06870d1d7034
+  languageName: node
+  linkType: hard
+
 "@prefresh/babel-plugin@npm:0.4.3":
   version: 0.4.3
   resolution: "@prefresh/babel-plugin@npm:0.4.3"
@@ -1546,9 +1564,10 @@ __metadata:
   resolution: "preact-test@workspace:."
   dependencies:
     "@preact/preset-vite": ^2.3.0
+    "@preact/signals": ^1.1.2
     preact: ^10.10.6
-    typescript: ^4.6.4
-    vite: ^3.1.0
+    typescript: ^4.8.4
+    vite: ^3.1.8
   languageName: unknown
   linkType: soft
 
@@ -1803,7 +1822,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.6.4":
+"typescript@npm:^4.8.4":
   version: 4.8.4
   resolution: "typescript@npm:4.8.4"
   bin:
@@ -1813,7 +1832,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^4.6.4#~builtin<compat/typescript>":
+"typescript@patch:typescript@^4.8.4#~builtin<compat/typescript>":
   version: 4.8.4
   resolution: "typescript@patch:typescript@npm%3A4.8.4#~builtin<compat/typescript>::version=4.8.4&hash=701156"
   bin:
@@ -1862,7 +1881,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^3.1.0":
+"vite@npm:^3.1.8":
   version: 3.1.8
   resolution: "vite@npm:3.1.8"
   dependencies:
