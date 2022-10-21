@@ -10,16 +10,10 @@ interface State {
   paused: Signal<boolean>;
 }
 
-const toggle = ({ frame, paused }: State) => {
-  let cancel: () => void;
-  return effect(() => {
-    if (paused.value) {
-      if (cancel) cancel();
-    } else {
-      cancel = repeatedly(() => frame.value++);
-    }
-  });
-};
+const toggle = ({ frame, paused }: State) =>
+  effect(
+    () => !paused.value && repeatedly(() => (frame.value++, !paused.peek()))
+  );
 
 const state: State = {
   frame: signal(0),
