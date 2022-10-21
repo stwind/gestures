@@ -3,7 +3,7 @@ import { effect, Signal, signal } from "@preact/signals";
 import "./index.css";
 
 import { repeatedly } from "./scheduler";
-import { EventBus, RAFEventBus } from "./event-bus";
+import { EventBus, rafEventBus } from "./event-bus";
 
 interface State {
   frame: Signal<number>;
@@ -24,7 +24,7 @@ toggle(state);
 
 // Events
 
-const bus = new RAFEventBus({
+const bus = rafEventBus({
   toggle: () => (state.paused.value = !state.paused.value),
   reset: (x: number = 0) => (state.frame.value = x),
 });

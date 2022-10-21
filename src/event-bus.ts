@@ -2,6 +2,7 @@ import { type IScheduler, type Callback, RAF_SCHEDULER, once } from "./scheduler
 
 export type Event = [string, any?];
 export type Handler = (args: any, bus: EventBus) => void;
+export type Handlers = Record<string, Handler>;
 
 export class EventBus {
   #queue: Event[] = [];
@@ -26,7 +27,7 @@ export class EventBus {
 export class ScheduledEventBus<T> extends EventBus {
   #later: (f: Callback) => void;
 
-  constructor(handlers: Record<string, Handler>, scheduler: IScheduler<T>) {
+  constructor(handlers: Handlers, scheduler: IScheduler<T>) {
     super(handlers);
     this.#later = once(scheduler);
   }
@@ -38,7 +39,9 @@ export class ScheduledEventBus<T> extends EventBus {
 }
 
 export class RAFEventBus extends ScheduledEventBus<number> {
-  constructor(handlers: Record<string, Handler>) {
+  constructor(handlers: Handlers) {
     super(handlers, RAF_SCHEDULER);
   }
 }
+
+export const rafEventBus = (handlers: Handlers) => new RAFEventBus(handlers);
