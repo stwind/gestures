@@ -6,8 +6,7 @@ export type Handler = (args: any, bus: EventBus) => void;
 export class EventBus {
   #queue: Event[] = [];
 
-  constructor(public handlers: Record<string, Handler>) {
-  }
+  constructor(public handlers: Record<string, Handler>) { }
 
   dispatch(e: Event) {
     this.#queue.push(e);

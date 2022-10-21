@@ -28,6 +28,8 @@ const state: State = {
 
 toggle(state);
 
+// Events
+
 const bus = new RAFEventBus({
   toggle: () => (state.paused.value = !state.paused.value),
   reset: (x: number = 0) => (state.frame.value = x),
