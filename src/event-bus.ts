@@ -27,7 +27,7 @@ export class EventBus {
 export class ScheduledEventBus<T> extends EventBus {
   #later: (f: Callback) => void;
 
-  constructor(handlers: Record<string, Handler>, scheduler: IScheduler<T> = RAF_SCHEDULER as IScheduler<T>) {
+  constructor(handlers: Record<string, Handler>, scheduler: IScheduler<T>) {
     super(handlers);
     this.#later = once(scheduler);
   }
@@ -35,5 +35,11 @@ export class ScheduledEventBus<T> extends EventBus {
   dispatch(e: Event) {
     super.dispatch(e);
     this.#later(() => this.process());
+  }
+}
+
+export class RAFEventBus extends ScheduledEventBus<number> {
+  constructor(handlers: Record<string, Handler>) {
+    super(handlers, RAF_SCHEDULER);
   }
 }

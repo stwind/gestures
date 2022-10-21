@@ -31,7 +31,6 @@ export const once = <T>(scheduler: IScheduler<T>) => {
   }
 }
 
-
 export const repeatedly = <T,>(f: () => any, scheduler: IScheduler<T> = RAF_SCHEDULER as IScheduler<T>) => {
   let handle = scheduler.schedule(function step() {
     if (f() !== false) handle = scheduler.schedule(step);
