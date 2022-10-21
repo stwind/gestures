@@ -5,13 +5,8 @@ export interface IScheduler<T> {
 }
 
 export const RAF_SCHEDULER = {
-  schedule(cb: Callback): number {
-    return requestAnimationFrame(cb);
-  },
-
-  cancel(x: number): void {
-    cancelAnimationFrame(x);
-  }
+  schedule: (cb: Callback) => requestAnimationFrame(cb),
+  cancel: (x: number) => cancelAnimationFrame(x)
 } as IScheduler<number>;
 
 export const NULL_SCHEDULER = {
