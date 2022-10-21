@@ -18,10 +18,7 @@ export const once = <T>(scheduler: IScheduler<T>) => {
   let id: T | undefined;
   return (f: Callback) => {
     if (id === undefined) {
-      id = scheduler.schedule(() => {
-        id = undefined;
-        f();
-      });
+      id = scheduler.schedule(() => (id = undefined, f()));
     }
   }
 }
