@@ -2,16 +2,8 @@ import { type FunctionComponent, render } from "preact";
 import { effect, Signal, signal } from "@preact/signals";
 import "./index.css";
 
-// Utils
-
-const raf = (f: (t: DOMHighResTimeStamp) => any) => {
-  let handle = requestAnimationFrame(function frame(t) {
-    if (f(t) !== false) handle = requestAnimationFrame(frame);
-  });
-  return () => cancelAnimationFrame(handle);
-};
-
-// State
+import { repeatedly } from "./scheduler";
+import { EventBus, ScheduledEventBus } from "./event-bus";
 
 interface State {
   frame: Signal<number>;
@@ -24,7 +16,7 @@ const toggle = ({ frame, paused }: State) => {
     if (paused.value) {
       if (cancel) cancel();
     } else {
-      cancel = raf(() => frame.value++);
+      cancel = repeatedly(() => frame.value++);
     }
   });
 };
@@ -36,21 +28,30 @@ const state: State = {
 
 toggle(state);
 
+const bus = new ScheduledEventBus({
+  toggle: () => (state.paused.value = !state.paused.value),
+  reset: (x: number = 0) => (state.frame.value = x),
+});
+
 // UI
 
-const App: FunctionComponent<{ state: State }> = ({
+const App: FunctionComponent<{ state: State; bus: EventBus }> = ({
   state: { frame, paused },
+  bus,
 }) => (
   <>
     <div>{frame}</div>
     <button
       style={{ width: "3.5rem" }}
-      onClick={() => (paused.value = !paused.value)}
+      onClick={() => bus.dispatch(["toggle"])}
     >
       {paused.value ? "run" : "pause"}
     </button>
-    <button onClick={() => (frame.value = 0)}>reset</button>
+    <button onClick={() => bus.dispatch(["reset"])}>reset</button>
   </>
 );
 
-render(<App state={state} />, document.getElementById("app") as HTMLElement);
+render(
+  <App state={state} bus={bus} />,
+  document.getElementById("app") as HTMLElement
+);
