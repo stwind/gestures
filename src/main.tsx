@@ -1,5 +1,5 @@
 import { type FunctionComponent, render } from "preact";
-import { effect, Signal, signal } from "@preact/signals";
+import { effect, computed, Signal, signal } from "@preact/signals";
 import "./index.css";
 
 import { repeatedly } from "./scheduler";
@@ -22,8 +22,6 @@ const state: State = {
 
 toggle(state);
 
-// Events
-
 const bus = rafEventBus({
   toggle: () => (state.paused.value = !state.paused.value),
   reset: (x: number = 0) => (state.frame.value = x),
@@ -37,13 +35,12 @@ const App: FunctionComponent<{ state: State; bus: EventBus }> = ({
 }) => (
   <>
     <div>{frame}</div>
-    <button
-      style={{ width: "3.5rem" }}
-      onClick={() => bus.dispatch(["toggle"])}
-    >
+    <button className="btn" onClick={() => bus.dispatch(["toggle"])}>
       {paused.value ? "run" : "pause"}
     </button>
-    <button onClick={() => bus.dispatch(["reset"])}>reset</button>
+    <button className="btn" onClick={() => bus.dispatch(["reset"])}>
+      reset
+    </button>
   </>
 );
 
