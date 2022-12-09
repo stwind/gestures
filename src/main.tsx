@@ -1,9 +1,9 @@
-import { type FunctionComponent, render } from "preact";
-import { effect, computed, Signal, signal } from "@preact/signals";
-import "./index.css";
+import { type FunctionComponent, render } from 'preact';
+import { effect, computed, Signal, signal } from '@preact/signals';
+import './index.css';
 
-import { repeatedly } from "./scheduler";
-import { EventBus, eventBus } from "./event-bus";
+import { repeatedly } from './scheduler';
+import { EventBus, eventBus } from './event-bus';
 
 interface State {
   frame: Signal<number>;
@@ -35,10 +35,10 @@ const App: FunctionComponent<{ state: State; bus: EventBus }> = ({
 }) => (
   <>
     <div>{frame}</div>
-    <button className="btn" onClick={() => bus.dispatch("toggle")}>
-      {paused.value ? "run" : "pause"}
+    <button className="btn" onClick={() => bus.dispatch('toggle')}>
+      {paused.value ? 'run' : 'pause'}
     </button>
-    <button className="btn" onClick={() => bus.dispatch("reset")}>
+    <button className="btn" onClick={() => bus.dispatch('reset')}>
       reset
     </button>
   </>
@@ -46,5 +46,5 @@ const App: FunctionComponent<{ state: State; bus: EventBus }> = ({
 
 render(
   <App state={state} bus={bus} />,
-  document.getElementById("app") as HTMLElement
+  document.getElementById('app') as HTMLElement
 );
