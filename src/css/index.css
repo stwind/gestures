@@ -8,11 +8,15 @@
 }
 
 #app {
-  @apply text-xs w-screen h-screen flex font-sans font-light;
+  @apply text-xs w-screen h-screen font-sans font-light relative;
   hyphens: auto;
   font-kerning: normal;
 }
 
 .stage {
   @apply w-screen h-screen absolute;
+}
+
+.info {
+  @apply absolute top-0 left-0 pointer-events-none;
 }

@@ -10,7 +10,7 @@ export const RAF_SCHEDULER: IScheduler<number> = {
 };
 
 export const NULL_SCHEDULER: IScheduler<void> = {
-  schedule(cb: Callback) { setTimeout(cb, 0); },
+  schedule(cb: Callback) { cb(); },
   cancel() { }
 };
 
@@ -20,7 +20,7 @@ export const once = <T,>(scheduler: IScheduler<T>) => {
     if (id === undefined)
       id = scheduler.schedule(() => (id = undefined, f()));
   }
-}
+};
 
 export const repeatedly = <T,>(f: () => any, scheduler: IScheduler<T> = RAF_SCHEDULER as IScheduler<T>) => {
   let handle = scheduler.schedule(function step() {
