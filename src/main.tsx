@@ -3,7 +3,7 @@ import { effect, computed, Signal, signal } from "@preact/signals";
 import "./index.css";
 
 import { repeatedly } from "./scheduler";
-import { EventBus, rafEventBus } from "./event-bus";
+import { EventBus, eventBus } from "./event-bus";
 
 interface State {
   frame: Signal<number>;
@@ -22,7 +22,7 @@ const state: State = {
 
 toggle(state);
 
-const bus = rafEventBus({
+const bus = eventBus({
   toggle: () => (state.paused.value = !state.paused.value),
   reset: (x: number = 0) => (state.frame.value = x),
 });
@@ -35,10 +35,10 @@ const App: FunctionComponent<{ state: State; bus: EventBus }> = ({
 }) => (
   <>
     <div>{frame}</div>
-    <button className="btn" onClick={() => bus.dispatch(["toggle"])}>
+    <button className="btn" onClick={() => bus.dispatch("toggle")}>
       {paused.value ? "run" : "pause"}
     </button>
-    <button className="btn" onClick={() => bus.dispatch(["reset"])}>
+    <button className="btn" onClick={() => bus.dispatch("reset")}>
       reset
     </button>
   </>

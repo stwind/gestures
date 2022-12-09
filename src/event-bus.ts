@@ -1,4 +1,4 @@
-import { type IScheduler, type Callback, RAF_SCHEDULER, once } from "./scheduler";
+import { type IScheduler, type Callback, RAF_SCHEDULER, once } from "./scheduler.js";
 
 export type Event = [string, any?];
 export type Handler = (args: any, bus: EventBus) => void;
@@ -9,8 +9,8 @@ export class EventBus {
 
   constructor(public handlers: Record<string, Handler>) { }
 
-  dispatch(e: Event) {
-    this.#queue.push(e);
+  dispatch(name: keyof typeof this.handlers, data?: any) {
+    this.#queue.push([name, data]);
   }
 
   process() {
@@ -32,16 +32,11 @@ export class ScheduledEventBus<T> extends EventBus {
     this.#later = once(scheduler);
   }
 
-  dispatch(e: Event) {
-    super.dispatch(e);
+  dispatch(name: keyof typeof this.handlers, data?: any) {
+    super.dispatch(name, data);
     this.#later(() => this.process());
   }
 }
 
-export class RAFEventBus extends ScheduledEventBus<number> {
-  constructor(handlers: Handlers) {
-    super(handlers, RAF_SCHEDULER);
-  }
-}
-
-export const rafEventBus = (handlers: Handlers) => new RAFEventBus(handlers);
+export const eventBus = (handlers: Handlers, scheduler = RAF_SCHEDULER) =>
+  new ScheduledEventBus(handlers, scheduler);
