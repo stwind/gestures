@@ -1,4 +1,4 @@
-import { type IScheduler, type Callback, RAF_SCHEDULER, once } from "./scheduler.js";
+import { type IScheduler, type Callback, NULL_SCHEDULER, once } from "./scheduler.js";
 
 export type Event = [string, any?];
 export type Handler = (args: any, bus: EventBus) => void;
@@ -38,5 +38,5 @@ export class ScheduledEventBus<T> extends EventBus {
   }
 }
 
-export const eventBus = (handlers: Handlers, scheduler = RAF_SCHEDULER) =>
+export const eventBus = <T,>(handlers: Handlers, scheduler = NULL_SCHEDULER as IScheduler<T>) =>
   new ScheduledEventBus(handlers, scheduler);

@@ -1,18 +1,18 @@
-import { signal, effect } from "@preact/signals";
+import { signal } from "@preact/signals";
 
-export interface RefSignal<T> {
-  notify: () => void;
-  dispose: () => void;
+export interface Mutable<T> {
+  notify(): void;
+  peek(): T;
   set value(x: T);
   get value(): T;
 }
 
-export const ref = <T>(x: T, update?: (x: T) => void) => {
+export const mutable = <T>(x: T, update?: (x: T) => void): Mutable<T> => {
   const version = signal(0);
   const notify = () => version.value = version.peek() + 1;
   return {
     notify,
-    dispose: effect(() => (update && update(x), notify())),
+    peek: () => x,
     set value(val: T) {
       x = val;
       notify();
@@ -21,5 +21,5 @@ export const ref = <T>(x: T, update?: (x: T) => void) => {
       version.value;
       return x;
     }
-  } as RefSignal<T>;
+  };
 };

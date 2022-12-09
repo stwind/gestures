@@ -1,0 +1,18 @@
+@import 'fonts';
+
+@tailwind base;
+@tailwind components;
+
+.btn {
+  @apply w-14 border;
+}
+
+#app {
+  @apply text-xs w-screen h-screen flex font-mono font-light;
+  hyphens: auto;
+  font-kerning: normal;
+}
+
+.stage {
+  @apply w-screen h-screen absolute;
+}

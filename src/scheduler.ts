@@ -10,7 +10,7 @@ export const RAF_SCHEDULER: IScheduler<number> = {
 };
 
 export const NULL_SCHEDULER: IScheduler<void> = {
-  schedule() { },
+  schedule(cb: Callback) { setTimeout(cb, 0); },
   cancel() { }
 };
 
