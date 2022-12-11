@@ -1,16 +1,16 @@
 type Fn = (x: any) => void;
-type Create = (output: (port: string, val: any) => void) => Record<string, Fn>;
+type Port = string;
+type Output = (port: Port, val: any) => void;
+type Create = (output: Output) => Record<Port, Fn>;
 
 export interface Node {
   on(port: string, f: Fn): () => void;
-  dispatch(port: string, x: any): void;
-  pipe(outPort: string, node: Node, inPort: string, tx?: (x: any) => any): void;
+  dispatch(port: Port, x: any): void;
+  route(node: Node, ports: Record<Port, Port>): void;
 }
 
-const identity = (x: any) => x;
-
 export const node = (create: Create): Node => {
-  const listeners: Record<string, Fn[]> = {};
+  const listeners: Record<Port, Fn[]> = {};
 
   const inputs = create((port, val) =>
     listeners[port] && listeners[port].forEach(f => f(val)));
@@ -24,7 +24,53 @@ export const node = (create: Create): Node => {
   return {
     on,
     dispatch: (port, val) => inputs[port] && inputs[port](val),
-    pipe: (outPort: string, node: Node, inPort: string, tx = identity) =>
-      on(outPort, x => node.dispatch(inPort, identity(x)))
+    route: (node, ports) => Object.entries(ports).forEach(
+      ([outP, inP]) => on(outP, x => node.dispatch(inP, x)))
   };
 };
+
+// concrete
+export const lastN = <T>(n: number = -1, name = "value") =>
+  node(output => {
+    const xs: T[] = [];
+    return {
+      val(x: T) {
+        xs.push(x);
+        if (n >= 0 && xs.length > n) xs.shift();
+        output(name, xs);
+      },
+      clear() {
+        xs.length = 0;
+        output(name, xs);
+      }
+    };
+  });
+
+export const passthrough = (names = ["value"]) => node(output =>
+  Object.fromEntries(names.map(name => [name, x => output(name, x)])));
+
+export const drag = () => node(output => {
+  let pointerId: number | undefined;
+  return {
+    down: (e: PointerEvent) => {
+      e.stopImmediatePropagation();
+      pointerId = e.pointerId;
+      (e.target as HTMLElement).setPointerCapture(pointerId);
+      output('start', [e.offsetX, e.offsetY]);
+    },
+    move: (e: PointerEvent) => {
+      if (pointerId === undefined) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      output('move', [e.offsetX, e.offsetY]);
+    },
+    up: (e: PointerEvent) => {
+      if (pointerId === undefined) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      (e.target as HTMLElement).releasePointerCapture(pointerId!);
+      pointerId = undefined;
+      output('end', [e.offsetX, e.offsetY]);
+    },
+  };
+});

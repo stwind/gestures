@@ -3,8 +3,15 @@
 @tailwind base;
 @tailwind components;
 
-.btn {
-  @apply w-14 border;
+html {
+  height: -webkit-fill-available;
+}
+
+body {
+  min-height: 100vh;
+  height: -webkit-fill-available;
+  overscroll-behavior: none;
+  @apply overflow-hidden touch-none;
 }
 
 #app {
