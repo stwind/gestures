@@ -29,23 +29,6 @@ export const node = (create: Create): Node => {
   };
 };
 
-// concrete
-export const lastN = <T>(n: number = -1, name = "value") =>
-  node(output => {
-    const xs: T[] = [];
-    return {
-      val(x: T) {
-        xs.push(x);
-        if (n >= 0 && xs.length > n) xs.shift();
-        output(name, xs);
-      },
-      clear() {
-        xs.length = 0;
-        output(name, xs);
-      }
-    };
-  });
-
 export const passthrough = (names = ["value"]) => node(output =>
   Object.fromEntries(names.map(name => [name, x => output(name, x)])));
 

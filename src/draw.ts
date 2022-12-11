@@ -1,5 +1,10 @@
-export const annotate = (ctx: CanvasRenderingContext2D, {
-  x, y, text, dpr,
+export interface Context2D {
+  ctx: CanvasRenderingContext2D;
+  dpr: number;
+}
+
+export const annotate = ({ ctx, dpr }: Context2D, {
+  x, y, text,
   fg = 'hsl(0,0%,100%)',
   bg = 'hsl(0,0%,20%)',
   font = '18px Inconsolata',
@@ -7,7 +12,6 @@ export const annotate = (ctx: CanvasRenderingContext2D, {
   x: number;
   y: number;
   text: string;
-  dpr: number,
   fg?: string;
   bg?: string;
   font?: string;
@@ -40,4 +44,14 @@ export const annotate = (ctx: CanvasRenderingContext2D, {
   );
   ctx.fillStyle = fg;
   ctx.fillText(text, ttx, ty);
+};
+
+export const cross = ({ ctx, dpr }: Context2D, { x, y }: { x: number; y: number; }) => {
+  ctx.beginPath();
+  ctx.moveTo(0, y * dpr);
+  ctx.lineTo(ctx.canvas.width, y * dpr);
+  ctx.stroke();
+  ctx.moveTo(x * dpr, 0);
+  ctx.lineTo(x * dpr, ctx.canvas.height);
+  ctx.stroke();
 };

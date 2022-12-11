@@ -3,55 +3,84 @@ import { useRef } from 'preact/hooks';
 import './css/index.css';
 
 import { type Mutable, mutable } from './signals';
-import { type Node, node, drag, passthrough, lastN } from './node';
+import { type Node, node, passthrough } from './node';
 import { usePointers, useCanvas2D } from './ui';
-import { annotate } from './draw';
-import { isMobile } from './utils';
+import { annotate, cross } from './draw';
+import { isMobile, copy } from './utils';
 
 type Vec2 = [number, number];
 
 interface Pointer {
   id: number;
-  pos: Vec2;
+  positions: Vec2[];
+  type: 'move' | 'down' | 'up';
   active: boolean;
+  trail: Vec2[];
 }
 
 interface State {
   pointers: Record<number, Pointer>;
+  transform: [number, number, number, number, number, number];
 }
 
 const nodes = {
-  main: passthrough([
-    'over',
-    'enter',
-    'down',
-    'move',
-    'up',
-    'cancel',
-    'out',
-    'leave',
-    'context',
-  ]),
+  main: passthrough(['down', 'move', 'up', 'context']),
 
-  state: node(output => {
-    const state: State = {
-      pointers: {},
-    };
+  pointers: node(output => {
+    const pointers: State['pointers'] = {};
     const removeInactive = isMobile();
     return {
       pointer: (e: PointerEvent) => {
-        const active = e.buttons === 1;
-        if (!state.pointers[e.pointerId]) {
-          state.pointers[e.pointerId] = {
-            id: e.pointerId,
-            pos: [e.clientX, e.clientY],
-            active,
-          };
-        } else {
-          state.pointers[e.pointerId].pos = [e.clientX, e.clientY];
-          state.pointers[e.pointerId].active = active;
+        const pointer = (pointers[e.pointerId] ||= {
+          id: e.pointerId,
+          positions: [],
+          trail: [],
+          type: 'move',
+          active: false,
+        });
+
+        pointer.active = e.buttons === 1;
+        pointer.type = e.type.slice(7) as Pointer['type'];
+        pointer.positions.unshift([e.offsetX, e.offsetY]);
+        if (pointer.positions.length > 30) pointer.positions.pop();
+
+        if (pointer.active || pointer.type == 'up') {
+          if (pointer.type == 'down') pointer.trail.length = 0;
+          pointer.trail.unshift([e.offsetX, e.offsetY]);
         }
-        if (removeInactive && !active) delete state.pointers[e.pointerId];
+
+        if (e.type == 'pointerdown' && removeInactive) {
+          for (const id in pointers)
+            if (pointers[id].type == 'up') delete pointers[id];
+        }
+        output('value', pointers);
+      },
+    };
+  }),
+  state: node(output => {
+    const state: State = {
+      transform: [1, 0, 0, 1, 0, 0],
+      pointers: {},
+    };
+    const tfms = [1, 0, 0, 1, 0, 0];
+    return {
+      pointers: (pointers: State['pointers']) => {
+        state.pointers = pointers;
+        const downP = Object.values(pointers).find(p => p.type == 'down');
+        if (downP) copy(tfms, state.transform);
+
+        const activeP = Object.values(pointers).find(
+          p => p.active || p.type == 'up'
+        );
+        if (activeP) {
+          const a = activeP.trail[0],
+            b = activeP.trail.at(-1)!;
+          const tx = a[0] - b[0],
+            ty = a[1] - b[1];
+          state.transform[4] = tfms[4] + tx;
+          state.transform[5] = tfms[5] + ty;
+        }
+
         output('value', state);
       },
     };
@@ -63,51 +92,103 @@ const nodes = {
       ctx.fillStyle = 'hsl(0,0%,95%)';
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     };
+    const drawMark = (size = 500) => {
+      ctx.fillStyle = 'rgba(36,94,7,.85)';
+      ctx.strokeStyle = 'hsl(0,0%,20%)';
+      const x = (ctx.canvas.width - size) * 0.5;
+      const y = (ctx.canvas.height - size) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + size, y);
+      ctx.lineTo(x + size, y + size);
+      ctx.lineTo(x, y + size);
+      ctx.lineTo(x, y);
+      ctx.fill();
+      ctx.stroke();
+    };
     return {
       init: ([_ctx, _dpr]: [CanvasRenderingContext2D, number]) => {
         ctx = _ctx;
         dpr = _dpr;
         clear();
+        drawMark();
       },
-      update({ pointers }: State) {
+      update({ pointers, transform }: State) {
         clear();
 
-        ctx.strokeStyle = 'hsl(0,0%,20%)';
-        ctx.setLineDash([2, 2]);
-        for (const {
-          id,
-          active,
-          pos: [x, y],
-        } of Object.values(pointers)) {
-          ctx.beginPath();
-          ctx.moveTo(0, y * dpr);
-          ctx.lineTo(ctx.canvas.width, y * dpr);
-          ctx.stroke();
-          ctx.moveTo(x * dpr, 0);
-          ctx.lineTo(x * dpr, ctx.canvas.height);
-          ctx.stroke();
+        ctx.save();
+        ctx.transform(
+          transform[0],
+          transform[1],
+          transform[2],
+          transform[3],
+          transform[4] * dpr,
+          transform[5] * dpr
+        );
+        drawMark();
+        ctx.restore();
 
-          const opts = {
-            x,
-            y,
-            dpr,
-            text: `[${id}] ${x.toFixed(0)},${y.toFixed(0)}`,
-            bg: active ? 'red' : 'hsl(0,0%,20%)',
-          };
-          annotate(ctx, opts);
+        for (const { id, active, positions, trail } of Object.values(
+          pointers
+        )) {
+          ctx.fillStyle = 'hsla(0,0%,50%,.1)';
+          ctx.strokeStyle = 'hsla(0,0%,50%,.5)';
+          let s = positions.length + 10;
+          for (const [x, y] of positions) {
+            ctx.beginPath();
+            ctx.arc(x * dpr, y * dpr, s--, 0, 360);
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          if (trail.length > 0) {
+            ctx.strokeStyle = 'hsl(0,0%,30%)';
+            ctx.beginPath();
+            ctx.moveTo(trail[0][0] * dpr, trail[0][1] * dpr);
+            for (let i = 1, n = trail.length; i < n; i++) {
+              const [x, y] = trail[i];
+              ctx.lineTo(x * dpr, y * dpr);
+            }
+            ctx.stroke();
+
+            const first = trail[0],
+              last = trail[trail.length - 1];
+            ctx.strokeStyle = 'rgb(202,38,38)';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(first[0] * dpr, first[1] * dpr);
+            ctx.lineTo(last[0] * dpr, last[1] * dpr);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+
+          const [x, y] = positions[0];
+          ctx.setLineDash([2, 2]);
+          ctx.strokeStyle = 'hsl(0,0%,20%)';
+          cross({ ctx, dpr }, { x, y });
+          annotate(
+            { ctx, dpr },
+            {
+              x,
+              y,
+              text: `[${id}] ${x.toFixed(0)},${y.toFixed(0)}`,
+              bg: active ? 'rgb(202,38,38)' : 'hsl(0,0%,20%)',
+            }
+          );
+          ctx.setLineDash([]);
         }
-        ctx.setLineDash([]);
       },
     };
   }),
 };
 
-nodes.main.route(nodes.state, {
+nodes.main.route(nodes.pointers, {
   move: 'pointer',
   down: 'pointer',
   up: 'pointer',
 });
 nodes.main.route(nodes.draw, { context: 'init' });
+nodes.pointers.route(nodes.state, { value: 'pointers' });
 nodes.state.route(nodes.draw, { value: 'update' });
 
 const state: {
@@ -124,14 +205,9 @@ const Canvas: Component = ({ events }) => {
   useCanvas2D(canvasRef, (ctx, dpr) => events.dispatch('context', [ctx, dpr]));
 
   const props = usePointers({
-    over: e => events.dispatch('over', e),
-    enter: e => events.dispatch('enter', e),
     down: e => events.dispatch('down', e),
     move: e => events.dispatch('move', e),
     up: e => events.dispatch('up', e),
-    cancel: e => events.dispatch('cancel', e),
-    out: e => events.dispatch('out', e),
-    leave: e => events.dispatch('leave', e),
   });
 
   return <canvas class="stage" ref={canvasRef} {...props}></canvas>;
