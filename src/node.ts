@@ -31,29 +31,3 @@ export const node = (create: Create): Node => {
 
 export const passthrough = (names: string[]) => node(output =>
   Object.fromEntries(names.map(name => [name, x => output(name, x)])));
-
-export const drag = () => node(output => {
-  let pointerId: number | undefined;
-  return {
-    down: (e: PointerEvent) => {
-      e.stopImmediatePropagation();
-      pointerId = e.pointerId;
-      (e.target as HTMLElement).setPointerCapture(pointerId);
-      output('start', [e.offsetX, e.offsetY]);
-    },
-    move: (e: PointerEvent) => {
-      if (pointerId === undefined) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      output('move', [e.offsetX, e.offsetY]);
-    },
-    up: (e: PointerEvent) => {
-      if (pointerId === undefined) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      (e.target as HTMLElement).releasePointerCapture(pointerId!);
-      pointerId = undefined;
-      output('end', [e.offsetX, e.offsetY]);
-    },
-  };
-});

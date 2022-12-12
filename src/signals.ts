@@ -1,27 +1,43 @@
-import { signal } from "@preact/signals";
+import { Signal, signal } from "@preact/signals";
+import type { Node } from "./node";
 
-export interface Mutable<T> {
-  notify(): void;
-  peek(): T;
-  set value(x: T);
-  get value(): T;
+export class Mutable<T> extends Signal<T> {
+  version: Signal<number> = signal(0);
+  val: T;
+
+  constructor(val: T) {
+    super(undefined);
+    this.val = val;
+  }
+
+  peek() {
+    return this.val;
+  }
+
+  notify() {
+    const version = this.version;
+    version.value = version.peek() + 1;
+  }
+
+  set value(val: T) {
+    this.val = val;
+    this.notify();
+  }
+
+  get value() {
+    this.version.value;
+    return this.val;
+  }
 }
 
-const identity = <T>(x1: T, x0?: T) => x1;
+export const mutable = <T>(x: T) => new Mutable(x);
 
-export const mutable = <T>(x: T, update: (x1: T, x0?: T) => T = identity): Mutable<T> => {
-  const version = signal(0);
-  const notify = () => version.value = version.peek() + 1;
-  return {
-    notify,
-    peek: () => x,
-    set value(val: T) {
-      x = update(val, x);
-      notify();
-    },
-    get value() {
-      version.value;
-      return x;
-    }
-  };
+export const fromPort = <T>(
+  node: Node,
+  port: string,
+  init: T,
+): Signal<T> => {
+  const s = mutable(init);
+  node.on(port, x => (s.value = x));
+  return s;
 };

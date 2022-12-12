@@ -2,13 +2,20 @@ import { type FunctionComponent as FC, render } from 'preact';
 import { useRef } from 'preact/hooks';
 import './css/index.css';
 
-import { type Mutable, mutable } from './signals';
+import { fromPort } from './signals';
 import { type Node, node, passthrough } from './node';
 import { usePointers, useCanvas2D, useWheel } from './ui';
 import { annotate, cross } from './draw';
-import { isMobile, copy, lerp } from './utils';
-
-type Vec2 = [number, number];
+import {
+  type Affine,
+  type Vec2,
+  isMobile,
+  copy,
+  lerp,
+  DEG2RAD,
+  matmul,
+  rotate,
+} from './utils';
 
 interface Pointer {
   id: number;
@@ -20,7 +27,7 @@ interface Pointer {
 
 interface State {
   pointers: Record<number, Pointer>;
-  transform: [number, number, number, number, number, number];
+  transform: Affine;
 }
 
 const nodes = {
@@ -66,36 +73,44 @@ const nodes = {
     return {
       pointers: (pointers: State['pointers']) => {
         state.pointers = pointers;
-        const downP = Object.values(pointers).find(p => p.type == 'down');
-        if (downP) copy(tfms, state.transform);
 
-        const activeP = Object.values(pointers).find(
-          p => p.active || p.type == 'up'
-        );
-        if (activeP) {
-          const a = activeP.trail[0];
-          const b = activeP.trail.at(-1)!;
-          state.transform[4] = tfms[4] + a[0] - b[0];
-          state.transform[5] = tfms[5] + a[1] - b[1];
+        const ptrs = Object.values(pointers).filter(p => p.active);
+        if (ptrs.length == 2) {
+          const [ptr0, ptr1] = ptrs;
+          const a = ptr0.positions[0];
+          const b = ptr1.positions[0];
+        } else if (ptrs) {
+          const downP = Object.values(pointers).find(p => p.type == 'down');
+          if (downP) copy(tfms, state.transform);
+
+          const activeP = Object.values(pointers).find(
+            p => p.active || p.type == 'up'
+          );
+          if (activeP) {
+            const a = activeP.trail[0];
+            const b = activeP.trail.at(-1)!;
+            state.transform[4] = tfms[4] + a[0] - b[0];
+            state.transform[5] = tfms[5] + a[1] - b[1];
+          }
         }
 
         output('value', state);
       },
       wheel: (e: WheelEvent) => {
-        const s = e.deltaY * 1e-4;
+        const s = e.deltaY * 5e-4;
 
         state.transform[4] = lerp(
           state.transform[4],
           e.offsetX,
           s / state.transform[0]
         );
-        state.transform[0] -= s;
-
         state.transform[5] = lerp(
           state.transform[5],
           e.offsetY,
           s / state.transform[3]
         );
+
+        state.transform[0] -= s;
         state.transform[3] -= s;
         output('value', state);
       },
@@ -186,6 +201,20 @@ const nodes = {
           );
           ctx.setLineDash([]);
         }
+
+        const ptrs = Object.values(pointers).filter(p => p.active);
+        if (ptrs.length == 2) {
+          const [ptr0, ptr1] = ptrs;
+          const a = ptr0.positions[0],
+            b = ptr1.positions[0];
+
+          ctx.lineWidth = 10;
+          ctx.beginPath();
+          ctx.moveTo(a[0] * dpr, a[1] * dpr);
+          ctx.lineTo(b[0] * dpr, b[1] * dpr);
+          ctx.stroke();
+          ctx.lineWidth = 1;
+        }
       },
     };
   }),
@@ -201,13 +230,9 @@ nodes.main.route(nodes.draw, { context: 'init' });
 nodes.pointers.route(nodes.state, { value: 'pointers' });
 nodes.state.route(nodes.draw, { value: 'update' });
 
-const state: {
-  positions: Mutable<Vec2[]>;
-} = {
-  positions: mutable([]),
-};
+// UI
+const state = fromPort<State | undefined>(nodes.state, 'value', undefined);
 
-// Components
 type Component = FC<{ state: typeof state; events: Node }>;
 
 const Canvas: Component = ({ events }) => {
@@ -230,15 +255,12 @@ const Canvas: Component = ({ events }) => {
   );
 };
 
-const Info: Component = ({ state: { positions } }) => (
-  <div class="info">
-    {positions.value.map((pos, i) => (
-      <div key={i}>
-        {pos[0].toFixed(4)}, {pos[1].toFixed(4)}
-      </div>
-    ))}
-  </div>
-);
+const Info: Component = ({ state }) =>
+  state.value ? (
+    <div class="info">
+      {Object.values(state.value.pointers).filter(p => p.active).length}
+    </div>
+  ) : null;
 
 const App: Component = props => (
   <>

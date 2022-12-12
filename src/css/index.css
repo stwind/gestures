@@ -21,7 +21,7 @@ body {
 }
 
 .stage {
-  @apply w-screen h-screen absolute;
+  @apply w-screen h-screen absolute select-none;
 }
 
 .info {
