@@ -29,7 +29,7 @@ export const node = (create: Create): Node => {
   };
 };
 
-export const passthrough = (names = ["value"]) => node(output =>
+export const passthrough = (names: string[]) => node(output =>
   Object.fromEntries(names.map(name => [name, x => output(name, x)])));
 
 export const drag = () => node(output => {

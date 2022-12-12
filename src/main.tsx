@@ -4,9 +4,9 @@ import './css/index.css';
 
 import { type Mutable, mutable } from './signals';
 import { type Node, node, passthrough } from './node';
-import { usePointers, useCanvas2D } from './ui';
+import { usePointers, useCanvas2D, useWheel } from './ui';
 import { annotate, cross } from './draw';
-import { isMobile, copy } from './utils';
+import { isMobile, copy, lerp } from './utils';
 
 type Vec2 = [number, number];
 
@@ -24,7 +24,7 @@ interface State {
 }
 
 const nodes = {
-  main: passthrough(['down', 'move', 'up', 'context']),
+  main: passthrough(['down', 'move', 'up', 'wheel', 'context']),
 
   pointers: node(output => {
     const pointers: State['pointers'] = {};
@@ -83,6 +83,24 @@ const nodes = {
 
         output('value', state);
       },
+      wheel: (e: WheelEvent) => {
+        const s = e.deltaY * 1e-4;
+
+        state.transform[4] = lerp(
+          state.transform[4],
+          e.offsetX,
+          s / state.transform[0]
+        );
+        state.transform[0] -= s;
+
+        state.transform[5] = lerp(
+          state.transform[5],
+          e.offsetY,
+          s / state.transform[3]
+        );
+        state.transform[3] -= s;
+        output('value', state);
+      },
     };
   }),
   draw: node(() => {
@@ -97,14 +115,7 @@ const nodes = {
       ctx.strokeStyle = 'hsl(0,0%,20%)';
       const x = (ctx.canvas.width - size) * 0.5;
       const y = (ctx.canvas.height - size) * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + size, y);
-      ctx.lineTo(x + size, y + size);
-      ctx.lineTo(x, y + size);
-      ctx.lineTo(x, y);
-      ctx.fill();
-      ctx.stroke();
+      ctx.fillRect(x, y, size, size);
     };
     return {
       init: ([_ctx, _dpr]: [CanvasRenderingContext2D, number]) => {
@@ -187,6 +198,7 @@ nodes.main.route(nodes.pointers, {
   down: 'pointer',
   up: 'pointer',
 });
+nodes.main.route(nodes.state, { wheel: 'wheel' });
 nodes.main.route(nodes.draw, { context: 'init' });
 nodes.pointers.route(nodes.state, { value: 'pointers' });
 nodes.state.route(nodes.draw, { value: 'update' });
@@ -210,7 +222,14 @@ const Canvas: Component = ({ events }) => {
     up: e => events.dispatch('up', e),
   });
 
-  return <canvas class="stage" ref={canvasRef} {...props}></canvas>;
+  return (
+    <canvas
+      class="stage"
+      ref={canvasRef}
+      {...props}
+      onWheel={useWheel(e => events.dispatch('wheel', e))}
+    ></canvas>
+  );
 };
 
 const Info: Component = ({ state: { positions } }) => (
