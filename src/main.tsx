@@ -73,12 +73,10 @@ const nodes = {
           p => p.active || p.type == 'up'
         );
         if (activeP) {
-          const a = activeP.trail[0],
-            b = activeP.trail.at(-1)!;
-          const tx = a[0] - b[0],
-            ty = a[1] - b[1];
-          state.transform[4] = tfms[4] + tx;
-          state.transform[5] = tfms[5] + ty;
+          const a = activeP.trail[0];
+          const b = activeP.trail.at(-1)!;
+          state.transform[4] = tfms[4] + a[0] - b[0];
+          state.transform[5] = tfms[5] + a[1] - b[1];
         }
 
         output('value', state);
