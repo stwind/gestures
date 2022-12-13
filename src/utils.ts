@@ -15,18 +15,21 @@ export type Vec2 = [number, number];
 export type Affine = [number, number, number, number, number, number];
 
 export const matmul = (c: Affine, a: Affine, b: Affine) => {
-  c[0] = a[0] * b[0] + a[2] * b[1];
-  c[1] = a[1] * b[0] + a[3] * b[1];
-  c[2] = a[0] * b[2] + a[2] * b[3];
-  c[3] = a[1] * b[2] + a[3] * b[3];
-  c[4] = a[0] * b[4] + a[2] * b[5] + a[4];
-  c[5] = a[1] * b[4] + a[3] * b[5] + a[5];
+  const [a0, a1, a2, a3, a4, a5] = a;
+  const [b0, b1, b2, b3, b4, b5] = b;
+  c[0] = a0 * b0 + a2 * b1;
+  c[1] = a1 * b0 + a3 * b1;
+  c[2] = a0 * b2 + a2 * b3;
+  c[3] = a1 * b2 + a3 * b3;
+  c[4] = a0 * b4 + a2 * b5 + a4;
+  c[5] = a1 * b4 + a3 * b5 + a5;
   return c;
 };
 
-export const rotate = (out: Affine, rad: number, p: Vec2 = [0, 0]) => {
+export const rotate = (rad: number): Affine => {
   const c = Math.cos(rad), s = Math.sin(rad);
-  matmul(out, [c, s, -s, c, 0, 0], [1, 0, 0, 1, -p[0], -p[1]]);
-  matmul(out, [1, 0, 0, 1, p[0], p[1]], out);
-  return out;
+  return [c, s, -s, c, 0, 0];
 };
+
+export const scale = ([sx, sy]: Vec2): Affine => [sx, 0, 0, sy, 0, 0];
+export const translate = ([tx, ty]: Vec2): Affine => [1, 0, 0, 1, tx, ty];

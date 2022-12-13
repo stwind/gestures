@@ -12,15 +12,17 @@ import {
   isMobile,
   copy,
   lerp,
-  DEG2RAD,
   matmul,
   rotate,
+  translate,
+  scale,
+  DEG2RAD,
 } from './utils';
 
 interface Pointer {
   id: number;
   positions: Vec2[];
-  type: 'move' | 'down' | 'up';
+  type: string;
   active: boolean;
   trail: Vec2[];
 }
@@ -42,23 +44,21 @@ const nodes = {
           id: e.pointerId,
           positions: [],
           trail: [],
-          type: 'move',
+          type: '',
           active: false,
         });
 
         pointer.active = e.buttons === 1;
-        pointer.type = e.type.slice(7) as Pointer['type'];
+        pointer.type = e.type.slice(7);
         pointer.positions.unshift([e.offsetX, e.offsetY]);
         if (pointer.positions.length > 30) pointer.positions.pop();
 
-        if (pointer.active || pointer.type == 'up') {
-          if (pointer.type == 'down') pointer.trail.length = 0;
-          pointer.trail.unshift([e.offsetX, e.offsetY]);
-        }
+        if (pointer.active) pointer.trail.unshift([e.offsetX, e.offsetY]);
+        else pointer.trail.length = 0;
 
-        if (e.type == 'pointerdown' && removeInactive) {
+        if (removeInactive) {
           for (const id in pointers)
-            if (pointers[id].type == 'up') delete pointers[id];
+            if (!pointers[id].active) delete pointers[id];
         }
         output('value', pointers);
       },
@@ -69,7 +69,13 @@ const nodes = {
       transform: [1, 0, 0, 1, 0, 0],
       pointers: {},
     };
-    const tfms = [1, 0, 0, 1, 0, 0];
+    matmul(state.transform, rotate(10 * DEG2RAD), state.transform);
+    const tfms: Affine = [1, 0, 0, 1, 0, 0];
+    const p0: Vec2 = [-1, -1],
+      p1: Vec2 = [-1, -1];
+    let r0 = 0;
+    let mag0 = 0;
+    let last = 0;
     return {
       pointers: (pointers: State['pointers']) => {
         state.pointers = pointers;
@@ -79,39 +85,73 @@ const nodes = {
           const [ptr0, ptr1] = ptrs;
           const a = ptr0.positions[0];
           const b = ptr1.positions[0];
-        } else if (ptrs) {
-          const downP = Object.values(pointers).find(p => p.type == 'down');
-          if (downP) copy(tfms, state.transform);
+          const p: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 
-          const activeP = Object.values(pointers).find(
-            p => p.active || p.type == 'up'
-          );
-          if (activeP) {
-            const a = activeP.trail[0];
-            const b = activeP.trail.at(-1)!;
-            state.transform[4] = tfms[4] + a[0] - b[0];
-            state.transform[5] = tfms[5] + a[1] - b[1];
+          if (last != 2) {
+            copy(tfms, state.transform);
+            p0[0] = p[0];
+            p0[1] = p[1];
+            r0 = Math.atan2(a[1] - b[1], a[0] - b[0]);
+            mag0 = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5;
           }
+          p1[0] = p[0];
+          p1[1] = p[1];
+          const rad = Math.atan2(a[1] - b[1], a[0] - b[0]) - r0;
+
+          const s = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 / mag0;
+
+          copy(state.transform, tfms);
+
+          matmul(state.transform, translate([-p0[0], -p0[1]]), state.transform);
+          matmul(state.transform, scale([s, s]), state.transform);
+          matmul(state.transform, rotate(rad), state.transform);
+
+          matmul(
+            state.transform,
+            translate([p1[0] - p0[0], p1[1] - p0[1]]),
+            state.transform
+          );
+          matmul(state.transform, translate(p0), state.transform);
+
+          last = 2;
+        } else if (ptrs.length == 1) {
+          const ptr = ptrs[0];
+          if (last != 1) {
+            copy(tfms, state.transform);
+            p0[0] = ptr.positions[0][0];
+            p0[1] = ptr.positions[0][1];
+          }
+          p1[0] = ptr.positions[0][0];
+          p1[1] = ptr.positions[0][1];
+
+          matmul(
+            state.transform,
+            translate([p1[0] - p0[0], p1[1] - p0[1]]),
+            tfms
+          );
+
+          last = 1;
+        } else {
+          last = 0;
         }
 
         output('value', state);
       },
       wheel: (e: WheelEvent) => {
         const s = e.deltaY * 5e-4;
+        const tx = e.offsetX;
+        const ty = e.offsetY;
 
-        state.transform[4] = lerp(
-          state.transform[4],
-          e.offsetX,
-          s / state.transform[0]
-        );
-        state.transform[5] = lerp(
-          state.transform[5],
-          e.offsetY,
-          s / state.transform[3]
-        );
+        const sx = state.transform[0];
+        const sy = state.transform[3];
 
-        state.transform[0] -= s;
-        state.transform[3] -= s;
+        matmul(state.transform, translate([-tx, -ty]), state.transform);
+        matmul(
+          state.transform,
+          scale([1 - s / sx, 1 - s / sy]),
+          state.transform
+        );
+        matmul(state.transform, translate([tx, ty]), state.transform);
         output('value', state);
       },
     };
@@ -124,7 +164,7 @@ const nodes = {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     };
     const drawMark = (size = 500) => {
-      ctx.fillStyle = 'rgba(36,94,7,.85)';
+      ctx.fillStyle = 'rgba(36,94,7,1)';
       ctx.strokeStyle = 'hsl(0,0%,20%)';
       const x = (ctx.canvas.width - size) * 0.5;
       const y = (ctx.canvas.height - size) * 0.5;
@@ -205,8 +245,9 @@ const nodes = {
         const ptrs = Object.values(pointers).filter(p => p.active);
         if (ptrs.length == 2) {
           const [ptr0, ptr1] = ptrs;
-          const a = ptr0.positions[0],
-            b = ptr1.positions[0];
+          const a = ptr0.positions[0];
+          const b = ptr1.positions[0];
+          const p = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 
           ctx.lineWidth = 10;
           ctx.beginPath();
@@ -214,6 +255,10 @@ const nodes = {
           ctx.lineTo(b[0] * dpr, b[1] * dpr);
           ctx.stroke();
           ctx.lineWidth = 1;
+          ctx.fillStyle = 'rgb(202,38,38)';
+          ctx.beginPath();
+          ctx.arc(p[0] * dpr, p[1] * dpr, 20, 0, 360);
+          ctx.fill();
         }
       },
     };
@@ -258,7 +303,13 @@ const Canvas: Component = ({ events }) => {
 const Info: Component = ({ state }) =>
   state.value ? (
     <div class="info">
-      {Object.values(state.value.pointers).filter(p => p.active).length}
+      {Object.values(state.value.pointers).map(p => {
+        return (
+          <div>
+            {p.id}: {p.type}
+          </div>
+        );
+      })}
     </div>
   ) : null;
 

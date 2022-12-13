@@ -15,13 +15,13 @@ body {
 }
 
 #app {
-  @apply text-xs w-screen h-screen font-sans font-light relative;
+  @apply text-xs w-screen h-screen font-sans font-light relative select-none;
   hyphens: auto;
   font-kerning: normal;
 }
 
 .stage {
-  @apply w-screen h-screen absolute select-none;
+  @apply w-screen h-screen absolute;
 }
 
 .info {
