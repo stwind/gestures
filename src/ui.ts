@@ -21,6 +21,3 @@ export const useCanvas2D = (
 
   cb(canvas.getContext('2d') as CanvasRenderingContext2D, dpr);
 }, []);
-
-export const useWheel = (cb: (e: WheelEvent) => void) =>
-  useCallback(cb, []);

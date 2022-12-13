@@ -1,10 +1,10 @@
 import { type FunctionComponent as FC, render } from 'preact';
-import { useRef } from 'preact/hooks';
+import { useRef, useCallback } from 'preact/hooks';
 import './css/index.css';
 
 import { fromPort } from './signals';
 import { type Node, node, passthrough } from './node';
-import { usePointers, useCanvas2D, useWheel } from './ui';
+import { usePointers, useCanvas2D } from './ui';
 import { annotate, cross } from './draw';
 import {
   type Affine,
@@ -22,7 +22,6 @@ import {
 interface Pointer {
   id: number;
   positions: Vec2[];
-  type: string;
   active: boolean;
   trail: Vec2[];
 }
@@ -44,19 +43,17 @@ const nodes = {
           id: e.pointerId,
           positions: [],
           trail: [],
-          type: '',
           active: false,
         });
 
         pointer.active = e.buttons === 1;
-        pointer.type = e.type.slice(7);
         pointer.positions.unshift([e.offsetX, e.offsetY]);
         if (pointer.positions.length > 30) pointer.positions.pop();
 
+        if (e.type == 'pointerdown') pointer.trail.length = 0;
         if (pointer.active) pointer.trail.unshift([e.offsetX, e.offsetY]);
-        else pointer.trail.length = 0;
 
-        if (removeInactive) {
+        if (removeInactive && e.type == 'pointerdown') {
           for (const id in pointers)
             if (!pointers[id].active) delete pointers[id];
         }
@@ -104,8 +101,6 @@ const nodes = {
             fixAt(transform([p1[0] - p0[0], p1[1] - p0[1]], rad, [s, s]), p0),
             tfms
           );
-
-          last = 2;
         } else if (ptrs.length == 1) {
           const ptr = ptrs[0];
           if (last != 1) {
@@ -121,23 +116,20 @@ const nodes = {
             translate([p1[0] - p0[0], p1[1] - p0[1]]),
             tfms
           );
-
-          last = 1;
-        } else {
-          last = 0;
         }
+        last = ptrs.length;
 
         output('value', state);
       },
       wheel: (e: WheelEvent) => {
         const s = e.deltaY * 5e-4;
 
-        const sx = state.transform[0];
-        const sy = state.transform[3];
+        const sx = 1 - s / state.transform[0];
+        const sy = 1 - s / state.transform[3];
 
         matmul(
           state.transform,
-          fixAt(scale([1 - s / sx, 1 - s / sy]), [e.offsetX, e.offsetY]),
+          fixAt(scale([sx, sy]), [e.offsetX, e.offsetY]),
           state.transform
         );
         output('value', state);
@@ -279,7 +271,7 @@ const Canvas: Component = ({ events }) => {
       class="stage"
       ref={canvasRef}
       {...props}
-      onWheel={useWheel(e => events.dispatch('wheel', e))}
+      onWheel={useCallback((e: WheelEvent) => events.dispatch('wheel', e), [])}
     ></canvas>
   );
 };
