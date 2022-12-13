@@ -1,3 +1,5 @@
-# Preact-Test
+# Gestures
 
-[live demo](https://githubbox.com/stwind/preact-test)
+Multitouch gestures testbed.
+
+[live demo](https://stwind.github.io/gestures/)
