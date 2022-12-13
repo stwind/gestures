@@ -25,5 +25,5 @@ body {
 }
 
 .info {
-  @apply absolute top-0 left-0 pointer-events-none;
+  @apply absolute top-1 left-1 pointer-events-none;
 }

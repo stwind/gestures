@@ -11,12 +11,12 @@ import {
   type Vec2,
   isMobile,
   copy,
-  lerp,
   matmul,
-  rotate,
   translate,
   scale,
-  DEG2RAD,
+  transform,
+  fixAt,
+  RAD2DEG,
 } from './utils';
 
 interface Pointer {
@@ -33,7 +33,7 @@ interface State {
 }
 
 const nodes = {
-  main: passthrough(['down', 'move', 'up', 'wheel', 'context']),
+  main: passthrough(['pointer', 'wheel', 'context']),
 
   pointers: node(output => {
     const pointers: State['pointers'] = {};
@@ -69,7 +69,6 @@ const nodes = {
       transform: [1, 0, 0, 1, 0, 0],
       pointers: {},
     };
-    matmul(state.transform, rotate(10 * DEG2RAD), state.transform);
     const tfms: Affine = [1, 0, 0, 1, 0, 0];
     const p0: Vec2 = [-1, -1],
       p1: Vec2 = [-1, -1];
@@ -92,26 +91,19 @@ const nodes = {
             p0[0] = p[0];
             p0[1] = p[1];
             r0 = Math.atan2(a[1] - b[1], a[0] - b[0]);
-            mag0 = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5;
+            mag0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
           }
           p1[0] = p[0];
           p1[1] = p[1];
           const rad = Math.atan2(a[1] - b[1], a[0] - b[0]) - r0;
 
-          const s = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 / mag0;
-
-          copy(state.transform, tfms);
-
-          matmul(state.transform, translate([-p0[0], -p0[1]]), state.transform);
-          matmul(state.transform, scale([s, s]), state.transform);
-          matmul(state.transform, rotate(rad), state.transform);
+          const s = Math.hypot(a[0] - b[0], a[1] - b[1]) / mag0;
 
           matmul(
             state.transform,
-            translate([p1[0] - p0[0], p1[1] - p0[1]]),
-            state.transform
+            fixAt(transform([p1[0] - p0[0], p1[1] - p0[1]], rad, [s, s]), p0),
+            tfms
           );
-          matmul(state.transform, translate(p0), state.transform);
 
           last = 2;
         } else if (ptrs.length == 1) {
@@ -139,19 +131,15 @@ const nodes = {
       },
       wheel: (e: WheelEvent) => {
         const s = e.deltaY * 5e-4;
-        const tx = e.offsetX;
-        const ty = e.offsetY;
 
         const sx = state.transform[0];
         const sy = state.transform[3];
 
-        matmul(state.transform, translate([-tx, -ty]), state.transform);
         matmul(
           state.transform,
-          scale([1 - s / sx, 1 - s / sy]),
+          fixAt(scale([1 - s / sx, 1 - s / sy]), [e.offsetX, e.offsetY]),
           state.transform
         );
-        matmul(state.transform, translate([tx, ty]), state.transform);
         output('value', state);
       },
     };
@@ -235,7 +223,7 @@ const nodes = {
             {
               x,
               y,
-              text: `[${id}] ${x.toFixed(0)},${y.toFixed(0)}`,
+              text: `${x.toFixed(0)},${y.toFixed(0)}`,
               bg: active ? 'rgb(202,38,38)' : 'hsl(0,0%,20%)',
             }
           );
@@ -265,11 +253,7 @@ const nodes = {
   }),
 };
 
-nodes.main.route(nodes.pointers, {
-  move: 'pointer',
-  down: 'pointer',
-  up: 'pointer',
-});
+nodes.main.route(nodes.pointers, { pointer: 'pointer' });
 nodes.main.route(nodes.state, { wheel: 'wheel' });
 nodes.main.route(nodes.draw, { context: 'init' });
 nodes.pointers.route(nodes.state, { value: 'pointers' });
@@ -285,9 +269,9 @@ const Canvas: Component = ({ events }) => {
   useCanvas2D(canvasRef, (ctx, dpr) => events.dispatch('context', [ctx, dpr]));
 
   const props = usePointers({
-    down: e => events.dispatch('down', e),
-    move: e => events.dispatch('move', e),
-    up: e => events.dispatch('up', e),
+    down: e => events.dispatch('pointer', e),
+    move: e => events.dispatch('pointer', e),
+    up: e => events.dispatch('pointer', e),
   });
 
   return (
@@ -300,18 +284,21 @@ const Canvas: Component = ({ events }) => {
   );
 };
 
-const Info: Component = ({ state }) =>
-  state.value ? (
+const Info: Component = ({ state }) => {
+  if (!state.value) return null;
+
+  const tfms = state.value.transform;
+  const s = Math.hypot(tfms[0], tfms[1]);
+  return (
     <div class="info">
-      {Object.values(state.value.pointers).map(p => {
-        return (
-          <div>
-            {p.id}: {p.type}
-          </div>
-        );
-      })}
+      <div>scale: {s.toFixed(3)}x</div>
+      <div>rotate: {(Math.acos(tfms[0] / s) * RAD2DEG).toFixed(3)}°</div>
+      <div>
+        translate: {tfms[4].toFixed(0)}, {tfms[5].toFixed(0)}
+      </div>
     </div>
-  ) : null;
+  );
+};
 
 const App: Component = props => (
   <>

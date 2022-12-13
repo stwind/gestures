@@ -33,3 +33,11 @@ export const rotate = (rad: number): Affine => {
 
 export const scale = ([sx, sy]: Vec2): Affine => [sx, 0, 0, sy, 0, 0];
 export const translate = ([tx, ty]: Vec2): Affine => [1, 0, 0, 1, tx, ty];
+
+export const transform = ([tx, ty]: Vec2, rad: number, [sx, sy]: Vec2): Affine => {
+  const c = Math.cos(rad), s = Math.sin(rad);
+  return [c * sx, s * sx, -s * sy, c * sy, tx, ty];
+};
+
+export const fixAt = ([a, b, c, d, e, f]: Affine, [x, y]: Vec2): Affine =>
+  [a, b, c, d, -a * x - c * y + e + x, -b * x - d * y + f + y];
